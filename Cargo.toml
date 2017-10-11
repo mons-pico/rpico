@@ -1,0 +1,15 @@
+[package]
+name = "pico"
+version = "0.1.0"
+authors = ["Stacy J. Prowell <sprowell@gmail.com>"]
+
+[dependencies]
+md5 = "0.3.5"
+
+[lib]
+name = "pico"
+path = "src/lib.rs"
+
+[[bin]]
+name = "picotest"
+path = "src/main.rs"
