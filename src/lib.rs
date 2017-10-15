@@ -12,9 +12,9 @@ pub mod errors;
 mod file;
 mod crypt;
 mod intbytes;
-
+mod header;
 pub use file::Pico;
-pub use file::HeaderFormat;
+pub use header::HeaderFormat;
 use constants::{MAGIC, MINOR, MAJOR};
 
 /// Obtain the Pico magic number.  The "magic number" used at the start of a

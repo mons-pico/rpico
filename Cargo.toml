@@ -2,9 +2,18 @@
 name = "pico"
 version = "0.1.0"
 authors = ["Stacy J. Prowell <sprowell@gmail.com>"]
+publish = false
+license = "BSD-2-Clause"
+license-file = "LICENSE"
+readme = "README.md"
+homepage = "http://mons-pico.github.io"
+repository = "https://github.com/mons-pico/rpico"
+categories = [ "crates.io/category_slugs", "encoding" ]
 
 [dependencies]
 md5 = "0.3.5"
+argparse = "*"
+clap = "~2.26"
 
 [lib]
 name = "pico"
