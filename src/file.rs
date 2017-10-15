@@ -1,4 +1,23 @@
 //! File operations and core data structure for the Pico library.
+//!
+//! # Pico File Layout
+//!
+//! ^ Offset      ^ Data  ^ Meaning ^ Code ^
+//! | 0x00 - 0x01 | Magic Number ||
+//! | 0x02 - 0x03 | Major Version Number | `get_major()` |
+//! | 0x04 - 0x05 | Minor Version Number | `get_minor()` |
+//! | 0x06 - 0x09 | Data Offset | `get_offset()` |
+//! | 0x0A - 0x19 | MD5 Byte 16 | `get_hash()` |
+//! | 0x1A - 0x1B | Key Length High Byte | `get_key().len()` |
+//! | 0x1C - | Start of Key Bytes | `get_key()` |
+//!
+//! The end of the key is the start of the metadata, if any.
+//! The length of the metadata section is given by
+//! `get_md_length()`.
+//!
+//! The offset points to the first byte of the data, which
+//! immediately follows the metadata, or the key if there is
+//! no metadata.
 
 use std::io::{Read, Write, Seek, SeekFrom};
 use constants::*;
@@ -257,11 +276,11 @@ impl<T: Seek + Read + Write> Pico<T> {
 
         // Little functions to assemble types from the buffers.
         fn tou16(buf: [u8; 2]) -> u16 {
-            ((buf[1] as u16) << 8) + (buf[0] as u16)
+            ((buf[0] as u16) << 8) | (buf[1] as u16)
         }
         fn tou32(buf: [u8; 4]) -> u32 {
-            ((buf[1] as u32) << 24) + ((buf[0] as u32) << 16) + ((buf[1] as u32) << 8) +
-                (buf[0] as u32)
+            ((buf[0] as u32) << 24) | ((buf[1] as u32) << 16) | ((buf[2] as u32) << 8) |
+                (buf[3] as u32)
         }
 
         // Read the magic number from the file.
@@ -308,8 +327,8 @@ impl<T: Seek + Read + Write> Pico<T> {
         }
 
         // Read the key.
-        let mut key = Vec::<u8>::with_capacity(keylen as usize);
-        file.read(key.as_mut_slice()).map_err(|err| {
+        let mut key = vec![0u8; keylen as usize];
+        file.read(&mut key).map_err(|err| {
             PicoError::ReadFailed(1008, err)
         })?;
 
@@ -358,18 +377,20 @@ impl<T: Seek + Read + Write> Pico<T> {
     /// If possible, the buffer is filled.  The number of bytes read is
     /// returned.
     pub fn get_metadata(&mut self, start: u32, buffer: &mut [u8]) -> Result<usize> {
-        // Compute the true offset to the data.
+        // If there is no metadata, then stop now.  If the offset is past the end
+        // of the metadata, then stop now.
+        let mdlen = self.get_md_length();
+        if mdlen == 0 || start >= mdlen { return Ok(0); }
+
+        // Compute the true offset to the metadata.
         let true_offset = start as usize + self.md_start;
 
         // Compute the maximum number of bytes that can be read from the
         // metadata, and then figure out how many bytes we actually need to
         // read.
-        let mut max = self.get_offset() as usize - true_offset;
-        if max < buffer.len() {
+        let mut max = (mdlen - start) as usize;
+        if max > buffer.len() {
             max = buffer.len();
-        }
-        if max <= 0 {
-            return Ok(0);
         }
 
         // Seek to the true offset.
@@ -396,16 +417,23 @@ impl<T: Seek + Read + Write> Pico<T> {
     /// if there is insufficient room for the data.  The number of bytes written
     /// is returned.
     pub fn put_metadata(&mut self, start: u32, buffer: &[u8]) -> Result<usize> {
-        // Compute the true offset to the data.
+        // If there is no metadata, then stop now.  If the offset is past the end
+        // of the metadata, then stop now.
+        let mdlen = self.get_md_length();
+        if mdlen == 0 || start >= mdlen { return Ok(0); }
+
+        // Compute the true offset to the metadata.
         let true_offset = start as usize + self.md_start;
 
         // Compute the maximum number of bytes that can be written to the
         // metadata, and then figure out how many bytes we actually need to
         // write.
-        let mut max = self.get_offset() as usize - true_offset;
-        if max < buffer.len() {
+        let mut max = (mdlen - start) as usize;
+        if max > buffer.len() {
             max = buffer.len();
         }
+
+        // If nothing to write, stop now.
         if max <= 0 {
             return Ok(0);
         }
@@ -558,5 +586,136 @@ impl<T: Seek + Read + Write> Pico<T> {
 
         // If we get here, success!
         Ok(())
+    }
+}
+
+mod test {
+    use std::fs::OpenOptions;
+    use super::Pico;
+
+    #[test]
+    fn hash_test() {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open("hash_test.pico")
+            .unwrap();
+        let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
+        pico.check_hash();
+        assert_eq!(pico.get_hash(), vec![
+            0xd4u8, 0x1du8, 0x8cu8, 0xd9u8,
+            0x8fu8, 0x00u8, 0xb2u8, 0x04u8,
+            0xe9u8, 0x80u8, 0x09u8, 0x98u8,
+            0xecu8, 0xf8u8, 0x42u8, 0x7eu8]);
+    }
+
+    #[test]
+    fn md_test_1() {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open("md_test_1.pico")
+            .unwrap();
+        let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
+        assert_eq!(pico.put_metadata(0, b"Martindale").unwrap(), 10);
+        let mut data = [0u8; 10];
+        assert_eq!(pico.get_metadata(0, &mut data).unwrap(), 10);
+        assert_eq!(&data, b"Martindale");
+    }
+
+    #[test]
+    fn md_test_2() {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open("md_test_2.pico")
+            .unwrap();
+        let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
+        assert_eq!(pico.put_metadata(0, b"Martindale").unwrap(), 10);
+        let mut data = [0u8; 10];
+        assert_eq!(pico.get_metadata(5, &mut data).unwrap(), 5);
+        assert_eq!(&data, b"ndale\0\0\0\0\0");
+    }
+
+    #[test]
+    fn md_test_3() {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open("md_test_3.pico")
+            .unwrap();
+        let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
+        assert_eq!(pico.put_metadata(5, b"Martindale").unwrap(), 5);
+        let mut data = [0u8; 10];
+        assert_eq!(pico.get_metadata(0, &mut data).unwrap(), 10);
+        assert_eq!(&data, b"\0\0\0\0\0Marti");
+    }
+
+    #[test]
+    fn md_test_4() {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open("md_test_4.pico")
+            .unwrap();
+        let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
+        assert_eq!(pico.put_metadata(0, b"Martindal").unwrap(), 9);
+        let mut data = [0u8; 10];
+        // The result here might be 10, or it might be 9.  It depends on whether or
+        // not the metadata has been padded out.  We don't actually care, do we don't
+        // check.
+        pico.get_metadata(0, &mut data).unwrap();
+        assert_eq!(&data, b"Martindal\0");
+    }
+
+    #[test]
+    fn md_test_5() {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open("md_test_5.pico")
+            .unwrap();
+        let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
+        assert_eq!(pico.put_metadata(10, b"Martindal").unwrap(), 0);
+        let mut data = [0u8; 20];
+        // The result here might be 10, or it might be zero.  It depends on whether or
+        // not the metadata has been padded out.  We don't actually care, do we don't
+        // check.
+        pico.get_metadata(0, &mut data).unwrap();
+        assert_eq!(&data, b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
+    }
+
+    #[test]
+    fn data_test_1() {
+        {
+            let file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .read(true)
+                .open("data_test_1.pico")
+                .unwrap();
+            let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
+            let mut indata = b"Martindale".clone();
+            pico.put(10, &mut indata).unwrap();
+            pico.flush().unwrap();
+        }
+        {
+            let file = OpenOptions::new()
+                .create(false)
+                .write(true)
+                .read(true)
+                .open("data_test_1.pico")
+                .unwrap();
+            let mut pico = Pico::open(file).unwrap();
+            let mut data = [0u8; 20];
+            assert_eq!(pico.get(0, &mut data).unwrap(), 20);
+            assert_eq!(&data[10..], b"Martindale");
+        }
     }
 }
