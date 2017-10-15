@@ -1,13 +1,10 @@
 //! Command line executable.
 extern crate pico;
-extern crate argparse;
 extern crate clap;
 
-#[allow(unused_imports)]
-use std::fs::OpenOptions;
-#[allow(unused_imports)]
-use pico::{HeaderFormat, Pico, major, minor};
+use pico::{HeaderFormat, major, minor};
 use clap::{Arg, App};
+use std::str::FromStr;
 
 /// Executable description.
 static DESCRIPTION: &str =
@@ -75,6 +72,7 @@ fn main() {
             .conflicts_with("decode")
             .short("H")
             .long("header")
+            .value_name("format")
             .help("Dump header information.")
             .takes_value(true))
         .arg(Arg::with_name("suffix")
@@ -97,10 +95,16 @@ fn main() {
     let mut op = Operation::Encode;
     if app_matches.is_present("header") { op = Operation::Header; }
     if app_matches.is_present("decode") { op = Operation::Decode; }
+    let header_format = match app_matches.value_of("header") {
+        None => HeaderFormat::DICT,
+        Some(name) => HeaderFormat::from_str(name).unwrap(),
+    };
+
+    // Perform the operation for each specified file.
     for file in filelist {
         match op {
             Operation::Header => {
-                println!("Pico Header for: {}", file);
+                println!("Pico Header as {:?} for: {}", header_format, file);
             },
             Operation::Encode => {
                 println!("Encoding {}...", file);

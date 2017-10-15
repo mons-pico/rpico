@@ -1,4 +1,4 @@
-//! File operations and core data structure for the Pico library.
+//! Core data structure for the Pico library.
 //!
 //! # Pico File Layout
 //!

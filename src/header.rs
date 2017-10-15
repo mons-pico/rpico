@@ -4,6 +4,7 @@ use std::str::FromStr;
 use std::result;
 
 /// Different formats for writing out the header.
+#[derive(Debug)]
 pub enum HeaderFormat {
     /// Use Python dict format.  This should work in both Python 2.7+
     /// and in Python 3+.

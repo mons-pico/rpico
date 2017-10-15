@@ -9,11 +9,11 @@ extern crate md5;
 
 pub mod constants;
 pub mod errors;
-mod file;
+mod pico;
 mod crypt;
 mod intbytes;
 mod header;
-pub use file::Pico;
+pub use pico::Pico;
 pub use header::HeaderFormat;
 use constants::{MAGIC, MINOR, MAJOR};
 
