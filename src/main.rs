@@ -1,6 +1,8 @@
 extern crate pico;
 
+#[allow(unused_imports)]
 use std::fs::OpenOptions;
+#[allow(unused_imports)]
 use pico::Pico;
 
 fn main() {

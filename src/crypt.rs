@@ -17,6 +17,7 @@ pub fn crypt(position: usize, data: &mut [u8], key: &Vec<u8>) {
     }
 }
 
+#[allow(unused_imports)]
 mod test {
     use super::crypt;
 

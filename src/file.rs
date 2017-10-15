@@ -589,79 +589,91 @@ impl<T: Seek + Read + Write> Pico<T> {
     }
 }
 
+#[allow(unused_imports)]
 mod test {
     use std::fs::OpenOptions;
+    use std::fs::create_dir_all;
+    use std::fs::remove_file;
     use super::Pico;
 
     #[test]
     fn hash_test() {
+        create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
             .write(true)
             .read(true)
-            .open("hash_test.pico")
+            .open("_test/hash_test.pico")
             .unwrap();
         let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
-        pico.check_hash();
+        pico.check_hash().unwrap();
         assert_eq!(pico.get_hash(), vec![
             0xd4u8, 0x1du8, 0x8cu8, 0xd9u8,
             0x8fu8, 0x00u8, 0xb2u8, 0x04u8,
             0xe9u8, 0x80u8, 0x09u8, 0x98u8,
             0xecu8, 0xf8u8, 0x42u8, 0x7eu8]);
+        remove_file("_test/hash_test.pico").unwrap();
     }
 
     #[test]
     fn md_test_1() {
+        create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
             .write(true)
             .read(true)
-            .open("md_test_1.pico")
+            .open("_test/md_test_1.pico")
             .unwrap();
         let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
         assert_eq!(pico.put_metadata(0, b"Martindale").unwrap(), 10);
         let mut data = [0u8; 10];
         assert_eq!(pico.get_metadata(0, &mut data).unwrap(), 10);
         assert_eq!(&data, b"Martindale");
+        remove_file("_test/md_test_1.pico").unwrap();
     }
 
     #[test]
     fn md_test_2() {
+        create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
             .write(true)
             .read(true)
-            .open("md_test_2.pico")
+            .open("_test/md_test_2.pico")
             .unwrap();
         let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
         assert_eq!(pico.put_metadata(0, b"Martindale").unwrap(), 10);
         let mut data = [0u8; 10];
         assert_eq!(pico.get_metadata(5, &mut data).unwrap(), 5);
         assert_eq!(&data, b"ndale\0\0\0\0\0");
+        remove_file("_test/md_test_2.pico").unwrap();
     }
 
     #[test]
     fn md_test_3() {
+        create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
             .write(true)
             .read(true)
-            .open("md_test_3.pico")
+            .open("_test/md_test_3.pico")
             .unwrap();
         let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
         assert_eq!(pico.put_metadata(5, b"Martindale").unwrap(), 5);
         let mut data = [0u8; 10];
         assert_eq!(pico.get_metadata(0, &mut data).unwrap(), 10);
         assert_eq!(&data, b"\0\0\0\0\0Marti");
+        remove_file("_test/md_test_3.pico").unwrap();
     }
 
     #[test]
     fn md_test_4() {
+        create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
             .write(true)
             .read(true)
-            .open("md_test_4.pico")
+            .open("_test/md_test_4.pico")
             .unwrap();
         let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
         assert_eq!(pico.put_metadata(0, b"Martindal").unwrap(), 9);
@@ -671,15 +683,17 @@ mod test {
         // check.
         pico.get_metadata(0, &mut data).unwrap();
         assert_eq!(&data, b"Martindal\0");
+        remove_file("_test/md_test_4.pico").unwrap();
     }
 
     #[test]
     fn md_test_5() {
+        create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
             .write(true)
             .read(true)
-            .open("md_test_5.pico")
+            .open("_test/md_test_5.pico")
             .unwrap();
         let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
         assert_eq!(pico.put_metadata(10, b"Martindal").unwrap(), 0);
@@ -689,16 +703,18 @@ mod test {
         // check.
         pico.get_metadata(0, &mut data).unwrap();
         assert_eq!(&data, b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
+        remove_file("_test/md_test_5.pico").unwrap();
     }
 
     #[test]
     fn data_test_1() {
+        create_dir_all("_test").unwrap();
         {
             let file = OpenOptions::new()
                 .create(true)
                 .write(true)
                 .read(true)
-                .open("data_test_1.pico")
+                .open("_test/data_test_1.pico")
                 .unwrap();
             let mut pico = Pico::new(file, vec![0x55, 0x21, 0xe4, 0x9a], 10).unwrap();
             let mut indata = b"Martindale".clone();
@@ -710,12 +726,13 @@ mod test {
                 .create(false)
                 .write(true)
                 .read(true)
-                .open("data_test_1.pico")
+                .open("_test/data_test_1.pico")
                 .unwrap();
             let mut pico = Pico::open(file).unwrap();
             let mut data = [0u8; 20];
             assert_eq!(pico.get(0, &mut data).unwrap(), 20);
             assert_eq!(&data[10..], b"Martindale");
         }
+        remove_file("_test/data_test_1.pico").unwrap();
     }
 }
