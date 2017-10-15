@@ -537,6 +537,7 @@ mod test {
         create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .read(true)
             .open("_test/hash_test.pico")
@@ -556,6 +557,7 @@ mod test {
         create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .read(true)
             .open("_test/md_test_1.pico")
@@ -573,6 +575,7 @@ mod test {
         create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .read(true)
             .open("_test/md_test_2.pico")
@@ -590,6 +593,7 @@ mod test {
         create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .read(true)
             .open("_test/md_test_3.pico")
@@ -607,6 +611,7 @@ mod test {
         create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .read(true)
             .open("_test/md_test_4.pico")
@@ -627,6 +632,7 @@ mod test {
         create_dir_all("_test").unwrap();
         let file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .read(true)
             .open("_test/md_test_5.pico")
@@ -648,6 +654,7 @@ mod test {
         {
             let file = OpenOptions::new()
                 .create(true)
+                .truncate(true)
                 .write(true)
                 .read(true)
                 .open("_test/data_test_1.pico")
