@@ -126,9 +126,10 @@ fn main() {
                 file::dump_header(&oldname, stdout(), &header_format);
             },
             Operation::Encode => {
+                let key = pico::gen_random_key(16);
                 let newname = basename + suffix + extension;
                 println!("Encoding {:?} -> {:?}", oldname, newname);
-                file::encode(&oldname, &newname, vec![21u8, 55u8], vec![], 0);
+                file::encode(&oldname, &newname, key, vec![], 0);
             },
             Operation::Decode => {
                 let newname = basename + suffix + extension;

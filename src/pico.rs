@@ -26,6 +26,25 @@ use crypt::crypt;
 use intbytes::{ByteDump, dump_vec};
 use errors::{PicoError, Result};
 use md5;
+use rand::Rng;
+use rand::os::OsRng;
+
+/// Generate a random string of bytes usable for an encryption
+/// key.  This uses the `rand` crate and especially the `OsRand`
+/// generator.  If the length is zero, then a key of length one
+/// is returned, since the library does not allow zero-length
+/// keys.
+pub fn gen_random_key(length: u16) -> Vec<u8> {
+    let length = if length > 0 {
+        length as usize
+    } else {
+        1
+    };
+    let mut rng = OsRng::new().unwrap();
+    let mut key = vec![0u8; length];
+    rng.fill_bytes(&mut key);
+    key
+}
 
 /// Wrapper to handle Pico encoding and decoding.
 ///

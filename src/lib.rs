@@ -4,6 +4,7 @@
 //! malware.  See http://mons-pico.github.io/ for details on this.
 
 extern crate md5;
+extern crate rand;
 
 #[warn(missing_docs)]
 
@@ -17,6 +18,7 @@ mod header;
 pub use pico::Pico;
 pub use header::HeaderFormat;
 use constants::{MAGIC, MINOR, MAJOR};
+pub use pico::gen_random_key;
 
 /// Obtain the Pico magic number.  The "magic number" used at the start of a
 /// file to indicate that it is a Pico-encoded file.
