@@ -460,6 +460,7 @@ impl<T: Seek + Read + Write> Pico<T> {
         crypt(position, buffer, &key);
 
         // Write the requested number of bytes to the data.
+        self.is_hash_valid = false;
         let count = self.file.write(buffer).map_err(|err| {
             PicoError::ReadFailed(1017, err)
         })?;
@@ -486,7 +487,7 @@ impl<T: Seek + Read + Write> Pico<T> {
             if num == 0 {
                 break;
             }
-            context.consume(&buffer[..]);
+            context.consume(&buffer[0..num]);
             position = position + num;
         }
         self.hash = *context.compute();
