@@ -100,7 +100,8 @@ fn main() {
             .takes_value(true))
         .get_matches();
 
-    // Figure out correct operation.
+    // Figure out correct operation.  This unwrap should not fail since
+    // the files are required.
     let filelist = app_matches.values_of("files").unwrap();
     enum Operation {
         Header, Encode, Decode,
@@ -110,6 +111,8 @@ fn main() {
     if app_matches.is_present("decode") { op = Operation::Decode; }
     let header_format = match app_matches.value_of("header") {
         None => HeaderFormat::DICT,
+        // This unwrap should not fail, since the format names are checked
+        // when parsing the command line.
         Some(name) => HeaderFormat::from_str(name).unwrap(),
     };
     let extension = match app_matches.value_of("extension") {
@@ -121,46 +124,70 @@ fn main() {
         },
         Some(ext) => ext,
     };
+    // This unwrap should never fail since suffix has a default value.
     let suffix = app_matches.value_of("suffix").unwrap();
 
     // Perform the operation for each specified file.
     for file in filelist {
+        // Check the file.
         let filepath = Path::new(&file);
-        let basename = filepath.file_stem().unwrap().to_string_lossy().into_owned();
+        if filepath.is_dir() {
+            eprintln!("ERROR: Argument {:?} is a folder.", file);
+            return;
+        }
+        if !filepath.exists() {
+            eprintln!("ERROR: Argument {:?} is not found.", file);
+            return;
+        }
+        let basename = match filepath.file_stem() {
+            None => {
+                eprintln!("ERROR: Argument {:?} is not a file.", file);
+                return;
+            },
+            Some(value) => value,
+        }.to_string_lossy().into_owned();
         let oldname: String = filepath.to_string_lossy().into_owned();
+
+        // Perform the correct operation.
         match op {
             Operation::Header => {
                 println!("Pico Header as {:?} for: {:?}", header_format, filepath);
                 file::dump_header(&oldname, stdout(), &header_format);
             },
+            
             Operation::Encode => {
                 // See if the user specified a key; if not, generate one.
-                let key = if app_matches.is_present("key") {
-                    let hex = app_matches.value_of("key").unwrap();
-                    let hex = hex.to_uppercase().into_bytes();
-                    let hexlen = hex.len();
-                    if hexlen % 2 != 0 {
-                        eprintln!("ERROR: Key must be an even number of hex digits.");
-                        return;
-                    }
-                    if hexlen == 0 {
-                        eprintln!("ERROR: Key cannot be empty.");
-                        return;
-                    }
-                    match Vec::<u8>::from_hex(hex) {
-                        Ok(value) => value,
-                        Err(err) => {
-                            eprintln!("ERROR: {}", err);
+                let key = match app_matches.value_of("key") {
+                    None => pico::gen_random_key(16),
+                    Some(hex) => {
+                        let hex = hex.to_uppercase().into_bytes();
+                        let hexlen = hex.len();
+                        if hexlen % 2 != 0 {
+                            // I think this is more helpful than the default given
+                            // by the hex package.
+                            eprintln!("ERROR: Key must be an even number of hex digits.");
                             return;
                         }
+                        if hexlen == 0 {
+                            // The hex package permits an empth string, so we have
+                            // to trap this here.
+                            eprintln!("ERROR: Key cannot be empty.");
+                            return;
+                        }
+                        match Vec::<u8>::from_hex(hex) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                eprintln!("ERROR: {}", err);
+                                return;
+                            }
+                        }
                     }
-                } else {
-                    pico::gen_random_key(16)
                 };
                 let newname = basename + suffix + extension;
                 println!("Encoding {:?} -> {:?}", oldname, newname);
                 file::encode(&oldname, &newname, key, vec![], 0);
             },
+
             Operation::Decode => {
                 let newname = basename + suffix + extension;
                 println!("Decoding {:?} -> {:?}", oldname, newname);
