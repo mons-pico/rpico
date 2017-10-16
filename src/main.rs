@@ -18,16 +18,17 @@ static LONG_DESCRIPTION: &str =
 "Input files are encoded by default.  If encoding, a .pico extension \
 is added to the file.  If decoding, then the input must be Pico-encoded \
 files, and a .raw extension is added by default.  If dumping the header, \
-the input files must be Pico-encoded files, and the header is dumped as \
-JSON to standard output.
+the input files must be Pico-encoded files, and the header is sent to \
+standard output in the specified format.
 
 The extension used can be overridden by --extension, which should include \
 the dot.  Any provided suffix (by default there is none) is added to the \
 file's base name.
 
-The header kinds can be json, yaml, dict (python), or xml.
+The header kinds can be JSON, YAML, DICT (Python), or XML.
 
-Keys must be specified as a list of hexadecimal digits (no spaces).";
+Keys must be specified as a list of hexadecimal digits (no spaces).  If \
+no key is specified for encoding, a random key is generated.";
 
 /// Entry point when run from the command line.
 fn main() {
@@ -84,6 +85,11 @@ fn main() {
             .long("suffix")
             .default_value("")
             .help("Suffix to add to output files.")
+            .takes_value(true))
+        .arg(Arg::with_name("key")
+            .short("k")
+            .long("key")
+            .help("Specify key for encoding.")
             .takes_value(true))
         .arg(Arg::with_name("files")
             .help("File names to process.")
