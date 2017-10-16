@@ -152,9 +152,12 @@ fn main() {
         match op {
             Operation::Header => {
                 println!("Pico Header as {:?} for: {:?}", header_format, filepath);
-                file::dump_header(&oldname, stdout(), &header_format);
+                match file::dump_header(&oldname, stdout(), &header_format) {
+                    Ok(()) => (),
+                    Err(err) => eprintln!("ERROR: {}", err),
+                };
             },
-            
+
             Operation::Encode => {
                 // See if the user specified a key; if not, generate one.
                 let key = match app_matches.value_of("key") {
@@ -185,13 +188,19 @@ fn main() {
                 };
                 let newname = basename + suffix + extension;
                 println!("Encoding {:?} -> {:?}", oldname, newname);
-                file::encode(&oldname, &newname, key, vec![], 0);
+                match file::encode(&oldname, &newname, key, vec![], 0) {
+                    Ok(()) => (),
+                    Err(err) => eprintln!("ERROR: {}", err),
+                };
             },
 
             Operation::Decode => {
                 let newname = basename + suffix + extension;
                 println!("Decoding {:?} -> {:?}", oldname, newname);
-                file::decode(&oldname, &newname);
+                match file::decode(&oldname, &newname) {
+                    Ok(()) => (),
+                    Err(err) => eprintln!("ERROR: {}", err),
+                };
             },
         }
     }

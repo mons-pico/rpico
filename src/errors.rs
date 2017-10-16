@@ -9,6 +9,10 @@ use constants::{MAJOR, MINOR};
 /// Report an error in handling a Pico-encoded file.
 #[derive(Debug)]
 pub enum PicoError {
+    /// A file that was expected to exist could not be found.
+    FileNotFound(u32, String, io::Error),
+    /// A file already exists.
+    FileExists(u32, String, io::Error),
     /// Unable to seek to the required location in a file.  Provide a
     /// unique id for the error, and the underlying error from the
     /// io module.
@@ -39,6 +43,8 @@ pub enum PicoError {
 impl Error for PicoError {
     fn description(&self) -> &str {
         match *self {
+            PicoError::FileNotFound(_, _, _) => r#"File was not found."#,
+            PicoError::FileExists(_, _, _) => r#"File already exists."#,
             PicoError::SeekFailed(_, _) => r#"Seeking within a file failed."#,
             PicoError::ReadFailed(_, _) => r#"Reading from a file failed."#,
             PicoError::WriteFailed(_, _) => r#"Writing to a file failed."#,
@@ -52,6 +58,8 @@ impl Error for PicoError {
     }
     fn cause(&self) -> Option<&Error> {
         Some(match *self {
+            PicoError::FileNotFound(_, _, ref err) => err as &Error,
+            PicoError::FileExists(_, _, ref err) => err as &Error,
             PicoError::SeekFailed(_, ref err) => err as &Error,
             PicoError::WriteFailed(_, ref err) => err as &Error,
             PicoError::ReadFailed(_, ref err) => err as &Error,
@@ -67,16 +75,29 @@ impl fmt::Display for PicoError {
         // We use the description for display, and then add additional information where appropriate.
         let res = write!(f, "{} ", self.description());
         match *self {
-            PicoError::NotPico(badmagic) => {
+            PicoError::FileNotFound(_, ref name, _) =>
+                write!(f, r#"File {:?} was not found."#, name),
+            PicoError::FileExists(_, ref name, _) =>
+                write!(f, r#"Preventing overwrite of file {:?}, which already exists."#, name),
+            PicoError::NotPico(badmagic) =>
                 write!(
                     f,
                     r#"First bytes are 0x{:04X} instead of 0x{:04X}, as required."#,
                     badmagic,
                     ::magic()
-                )
-            }
-            PicoError::BadVersion(badmajor, badminor) => write!(f, r#"This library implements version {}.{} of the Pico encoding, but the file specifies that it uses version {}.{}."#, MAJOR, MINOR, badmajor, badminor),
-            PicoError::BadOffset(badoffset, minoffset) => write!(f, r#"The header extends to at least offset 0x{:X}, but the file specifies the data offset as 0x{:X}."#, minoffset, badoffset),
+                ),
+            PicoError::BadVersion(badmajor, badminor) =>
+                write!(
+                    f,
+                    r#"This library implements version {}.{} of the Pico encoding, but the file specifies that it uses version {}.{}."#,
+                    MAJOR, MINOR, badmajor, badminor
+                ),
+            PicoError::BadOffset(badoffset, minoffset) =>
+                write!(
+                    f,
+                    r#"The header extends to at least offset 0x{:X}, but the file specifies the data offset as 0x{:X}."#,
+                    minoffset, badoffset
+                ),
             _ => res,
         }
     }
