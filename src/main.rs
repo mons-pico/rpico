@@ -1,6 +1,7 @@
 //! Command line executable.
 extern crate pico;
 extern crate clap;
+extern crate hex;
 
 use std::str::FromStr;
 use std::path::Path;
@@ -8,6 +9,7 @@ use std::io::stdout;
 use pico::{HeaderFormat, major, minor};
 use clap::{Arg, App};
 use pico::file;
+use hex::FromHex;
 
 /// Executable description.
 static DESCRIPTION: &str =
@@ -132,7 +134,29 @@ fn main() {
                 file::dump_header(&oldname, stdout(), &header_format);
             },
             Operation::Encode => {
-                let key = pico::gen_random_key(16);
+                // See if the user specified a key; if not, generate one.
+                let key = if app_matches.is_present("key") {
+                    let hex = app_matches.value_of("key").unwrap();
+                    let hex = hex.to_uppercase().into_bytes();
+                    let hexlen = hex.len();
+                    if hexlen % 2 != 0 {
+                        eprintln!("ERROR: Key must be an even number of hex digits.");
+                        return;
+                    }
+                    if hexlen == 0 {
+                        eprintln!("ERROR: Key cannot be empty.");
+                        return;
+                    }
+                    match Vec::<u8>::from_hex(hex) {
+                        Ok(value) => value,
+                        Err(err) => {
+                            eprintln!("ERROR: {}", err);
+                            return;
+                        }
+                    }
+                } else {
+                    pico::gen_random_key(16)
+                };
                 let newname = basename + suffix + extension;
                 println!("Encoding {:?} -> {:?}", oldname, newname);
                 file::encode(&oldname, &newname, key, vec![], 0);
