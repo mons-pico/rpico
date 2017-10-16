@@ -2,9 +2,12 @@
 extern crate pico;
 extern crate clap;
 
+use std::str::FromStr;
+use std::path::Path;
+use std::io::stdout;
 use pico::{HeaderFormat, major, minor};
 use clap::{Arg, App};
-use std::str::FromStr;
+use pico::file;
 
 /// Executable description.
 static DESCRIPTION: &str =
@@ -70,6 +73,7 @@ fn main() {
         .arg(Arg::with_name("header")
             .conflicts_with("encode")
             .conflicts_with("decode")
+            .possible_values(&["DICT", "JSON", "YAML", "XML"])
             .short("H")
             .long("header")
             .value_name("format")
@@ -78,6 +82,7 @@ fn main() {
         .arg(Arg::with_name("suffix")
             .short("s")
             .long("suffix")
+            .default_value("")
             .help("Suffix to add to output files.")
             .takes_value(true))
         .arg(Arg::with_name("files")
@@ -99,18 +104,36 @@ fn main() {
         None => HeaderFormat::DICT,
         Some(name) => HeaderFormat::from_str(name).unwrap(),
     };
+    let extension = match app_matches.value_of("extension") {
+        None => {
+            match op {
+                Operation::Decode => ".raw",
+                _ => ".pico",
+            }
+        },
+        Some(ext) => ext,
+    };
+    let suffix = app_matches.value_of("suffix").unwrap();
 
     // Perform the operation for each specified file.
     for file in filelist {
+        let filepath = Path::new(&file);
+        let basename = filepath.file_stem().unwrap().to_string_lossy().into_owned();
+        let oldname: String = filepath.to_string_lossy().into_owned();
         match op {
             Operation::Header => {
-                println!("Pico Header as {:?} for: {}", header_format, file);
+                println!("Pico Header as {:?} for: {:?}", header_format, filepath);
+                file::dump_header(&oldname, stdout(), &header_format);
             },
             Operation::Encode => {
-                println!("Encoding {}...", file);
+                let newname = basename + suffix + extension;
+                println!("Encoding {:?} -> {:?}", oldname, newname);
+                file::encode(&oldname, &newname, vec![21u8, 55u8], vec![], 0);
             },
             Operation::Decode => {
-                println!("Decoding {}...", file);
+                let newname = basename + suffix + extension;
+                println!("Decoding {:?} -> {:?}", oldname, newname);
+                file::decode(&oldname, &newname);
             },
         }
     }

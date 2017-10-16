@@ -10,7 +10,7 @@ extern crate md5;
 pub mod constants;
 pub mod errors;
 mod pico;
-mod file;
+pub mod file;
 mod crypt;
 mod intbytes;
 mod header;

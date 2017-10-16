@@ -93,14 +93,14 @@ impl<T: Seek + Read + Write> Pico<T> {
     /// * `target` - The writer to get the output.
     /// * `form`   - The format to use to write.
     #[allow(unused_must_use)]
-    pub fn dump_header<U>(&self, target: &mut U, form: HeaderFormat)
+    pub fn dump_header<U>(&self, target: &mut U, form: &HeaderFormat)
     where
         U: Write,
     {
         let (major, minor) = self.get_version();
         let hash = self.get_hash();
         let key = self.get_key();
-        match form {
+        match *form {
             HeaderFormat::DICT => {
                 write!(target, "{{\n");
                 write!(target, "    \"magic\" : [ ");
